@@ -1,0 +1,22 @@
+# Node dependencies
+node_modules/
+
+# Local SQLite / JSON database & generated EPUB downloads
+data/downloads/*
+!data/downloads/.gitkeep
+data/db.json
+*.epub
+
+# Logs and temporary files
+*.log
+*.tmp*
+npm-debug.log*
+
+# Vercel builds & local overrides
+.vercel/
+.env
+.env.*
+
+# Operating System files
+.DS_Store
+Thumbs.db

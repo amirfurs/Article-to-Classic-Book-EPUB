@@ -1,0 +1,9 @@
+.git
+.github
+.gemini
+tests/
+data/downloads/*.epub
+*.tmp*
+.DS_Store
+Thumbs.db
+

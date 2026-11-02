@@ -1,0 +1,28 @@
+{
+  "name": "readcast-article-to-epub",
+  "version": "1.0.0",
+  "description": "Article to EPUB SaaS application",
+  "type": "module",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js",
+    "test": "node tests/test-engine.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "jsdom": "^29.1.1",
+    "jszip": "^3.10.2",
+    "nodemailer": "^10.3.1",
+    "qrcode": "^1.5.4",
+    "sanitize-html": "^2.18.1"
+  }
+}
