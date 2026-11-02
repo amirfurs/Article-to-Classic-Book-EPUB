@@ -1,6 +1,27 @@
 /**
  * ReadCast API client
+ * Built with resilient JSON parsing that gracefully handles non-JSON / serverless error responses.
  */
+
+async function parseResponse(res, fallbackError = 'Request failed') {
+  const text = await res.text();
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    // Non-JSON response (e.g. serverless error page or plain text 500)
+    if (!res.ok) {
+      throw new Error(text || `${fallbackError} (Status: ${res.status})`);
+    }
+  }
+
+  if (!res.ok) {
+    throw new Error((data && data.error) || text || `${fallbackError} (Status: ${res.status})`);
+  }
+
+  return data || {};
+}
+
 export const api = {
   async extractArticle(url) {
     const res = await fetch('/api/extract', {
@@ -8,8 +29,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Extraction failed');
+    const data = await parseResponse(res, 'Article extraction failed');
     return data.article;
   },
 
@@ -19,9 +39,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Conversion failed');
-    return data;
+    return await parseResponse(res, 'Conversion to EPUB failed');
   },
 
   async bundleArticles(params) {
@@ -30,31 +48,23 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Bundling failed');
-    return data;
+    return await parseResponse(res, 'Digest bundling failed');
   },
 
   async getLibrary(params = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`/api/library?${query}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to load library');
-    return data;
+    return await parseResponse(res, 'Failed to load library');
   },
 
   async deleteFromLibrary(id) {
     const res = await fetch(`/api/library/${id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete');
-    return data;
+    return await parseResponse(res, 'Failed to delete EPUB');
   },
 
   async getQrCode(id) {
     const res = await fetch(`/api/qr/${id}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to get QR code');
-    return data;
+    return await parseResponse(res, 'Failed to get QR code');
   },
 
   async sendToKindle(id, kindleEmail) {
@@ -63,15 +73,17 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, kindleEmail })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to send to Kindle');
-    return data;
+    return await parseResponse(res, 'Failed to send to Kindle');
   },
 
   async getSettings() {
-    const res = await fetch('/api/settings');
-    const data = await res.json();
-    return data.settings;
+    try {
+      const res = await fetch('/api/settings');
+      const data = await parseResponse(res, 'Failed to load settings');
+      return data.settings || {};
+    } catch (e) {
+      return {};
+    }
   },
 
   async updateSettings(settings) {
@@ -80,13 +92,17 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
     });
-    const data = await res.json();
+    const data = await parseResponse(res, 'Failed to update settings');
     return data.settings;
   },
 
   async getStats() {
-    const res = await fetch('/api/stats');
-    const data = await res.json();
-    return data.stats;
+    try {
+      const res = await fetch('/api/stats');
+      const data = await parseResponse(res, 'Failed to load stats');
+      return data.stats || { totalConversions: 0, totalWords: 0, kindleDeliveries: 0 };
+    } catch (e) {
+      return { totalConversions: 0, totalWords: 0, kindleDeliveries: 0 };
+    }
   }
 };

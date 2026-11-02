@@ -51,9 +51,10 @@ export async function fetchArticleHtml(url) {
     console.warn(`Native fetch failed for ${url} (${err.message}), attempting curl fallback...`);
   }
 
-  // Attempt 2: Fallback to curl.exe which handles TLS renegotiation and IPv4/IPv6 gracefully
+  // Attempt 2: Fallback to curl which handles TLS renegotiation and IPv4/IPv6 gracefully
   try {
-    const { stdout } = await execFileAsync('curl.exe', [
+    const curlCmd = process.platform === 'win32' ? 'curl.exe' : 'curl';
+    const { stdout } = await execFileAsync(curlCmd, [
       '-s', '-L',
       '--compressed',
       '--max-time', '35',

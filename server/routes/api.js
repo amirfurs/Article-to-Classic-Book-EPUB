@@ -396,6 +396,21 @@ router.post('/settings', (req, res) => {
 });
 
 /**
+ * GET /api/stats
+ * Returns global usage stats
+ */
+router.get('/stats', (req, res) => {
+  try {
+    res.json({ success: true, stats: db.getStats() });
+  } catch (err) {
+    res.json({
+      success: true,
+      stats: { totalConversions: 0, totalBundles: 0, totalWords: 0, kindleDeliveries: 0 }
+    });
+  }
+});
+
+/**
  * GET /api/read/:id
  * Reads and unpacks EPUB for the web EPUB player
  */
