@@ -19,10 +19,13 @@
     "@mozilla/readability": "^0.6.0",
     "cors": "^2.8.6",
     "express": "^5.3.0",
-    "jsdom": "^29.1.1",
+    "jsdom": "26.1.0",
     "jszip": "^3.10.2",
     "nodemailer": "^10.3.1",
     "qrcode": "^1.5.4",
     "sanitize-html": "^2.18.1"
+  },
+  "overrides": {
+    "jsdom": "26.1.0"
   }
 }
