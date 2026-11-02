@@ -1,12 +1,48 @@
 import express from 'express';
-import QRCode from 'qrcode';
 import fs from 'fs';
-import { extractArticle } from '../services/extractor.js';
-import { generateEpub } from '../services/epubGenerator.js';
 import { db } from '../services/db.js';
-import { kindleService } from '../services/kindleService.js';
-import { parseEpubFile } from '../services/epubReader.js';
 import { bufferCache } from '../services/bufferCache.js';
+
+// Lazy loader helpers for serverless cold start optimization
+let extractorPromise = null;
+const getExtractArticle = async () => {
+  if (!extractorPromise) {
+    extractorPromise = import('../services/extractor.js').then(m => m.extractArticle);
+  }
+  return extractorPromise;
+};
+
+let epubGenPromise = null;
+const getGenerateEpub = async () => {
+  if (!epubGenPromise) {
+    epubGenPromise = import('../services/epubGenerator.js').then(m => m.generateEpub);
+  }
+  return epubGenPromise;
+};
+
+let kindlePromise = null;
+const getKindleService = async () => {
+  if (!kindlePromise) {
+    kindlePromise = import('../services/kindleService.js').then(m => m.kindleService);
+  }
+  return kindlePromise;
+};
+
+let epubReaderPromise = null;
+const getParseEpubFile = async () => {
+  if (!epubReaderPromise) {
+    epubReaderPromise = import('../services/epubReader.js').then(m => m.parseEpubFile);
+  }
+  return epubReaderPromise;
+};
+
+let qrcodePromise = null;
+const getQrCode = async () => {
+  if (!qrcodePromise) {
+    qrcodePromise = import('qrcode').then(m => m.default || m);
+  }
+  return qrcodePromise;
+};
 
 const router = express.Router();
 
@@ -40,6 +76,7 @@ router.post('/extract', async (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid HTTP or HTTPS URL.' });
     }
 
+    const extractArticle = await getExtractArticle();
     const article = await extractArticle(url);
     res.json({ success: true, article });
   } catch (err) {
@@ -84,6 +121,7 @@ router.post('/convert', async (req, res) => {
       if (!url) {
         return res.status(400).json({ error: 'Article URL or content is required.' });
       }
+      const extractArticle = await getExtractArticle();
       const extracted = await extractArticle(url);
       articleData = {
         title: customTitle || extracted.title,
@@ -98,6 +136,7 @@ router.post('/convert', async (req, res) => {
     }
 
     const epubId = `epub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const generateEpub = await getGenerateEpub();
     const epubResult = await generateEpub({
       id: epubId,
       title: articleData.title,
@@ -157,6 +196,7 @@ router.post('/bundle', async (req, res) => {
 
     // Process articles - extract if only URL is given
     const processedArticles = [];
+    const extractArticle = await getExtractArticle();
     for (let i = 0; i < articles.length; i++) {
       const item = articles[i];
       if (item.htmlContent && item.title) {
@@ -187,6 +227,7 @@ router.post('/bundle', async (req, res) => {
     const totalWordCount = processedArticles.reduce((acc, a) => acc + (a.wordCount || 0), 0);
     const totalReadingTime = processedArticles.reduce((acc, a) => acc + (a.readingTime || 5), 0);
 
+    const generateEpub = await getGenerateEpub();
     const epubResult = await generateEpub({
       id: epubId,
       title: bundleTitle,
@@ -280,6 +321,7 @@ router.get('/qr/:id', async (req, res) => {
     const host = req.get('host') || 'localhost:3000';
     const downloadUrl = `${protocol}://${host}/api/download/${id}`;
 
+    const QRCode = await getQrCode();
     const qrDataUrl = await QRCode.toDataURL(downloadUrl, {
       errorCorrectionLevel: 'M',
       margin: 2,
@@ -367,6 +409,7 @@ router.post('/kindle/send', async (req, res) => {
       return res.status(400).json({ error: 'Kindle email address is required.' });
     }
 
+    const kindleService = await getKindleService();
     const result = await kindleService.sendToKindle({
       epubRecord: record,
       targetEmail: email
@@ -427,6 +470,7 @@ router.get('/read/:id', async (req, res) => {
       return res.status(404).json({ error: 'EPUB file not found or expired' });
     }
 
+    const parseEpubFile = await getParseEpubFile();
     const parsed = await parseEpubFile(source);
     res.json({
       success: true,
@@ -459,6 +503,7 @@ router.post('/read/upload', async (req, res) => {
     const cleanBase64 = base64Data.replace(/^data:.*?;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
 
+    const parseEpubFile = await getParseEpubFile();
     const parsed = await parseEpubFile(buffer);
     res.json({
       success: true,
